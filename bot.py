@@ -53,23 +53,51 @@ async def get_info(ctx, symbol: str, key: str):
             await ctx.send(f"{key} is not a valid information identifier")
             
 @get_info.error
-async def flip_error(ctx, error):
+async def info_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         await ctx.send("Incorrect arguments entered. Please enter: !get_info \{ticker symbol\} \{information requested\}")
         
         
 @bot.command(name='balance_sheet', help='Returns the most recent balance sheet of a single company specified by the ticker symbol entered')
 async def balance_sheet(ctx, symbol: str):
-    pass
+    if not data.ticker_exists(symbol):
+        await ctx.send(f"Ticker symbol {symbol} does not exist or may be delisted.")
+        return
+    
+    bsheet = data.get_balance_sheet(symbol)
+    
+    for i in range(0, 4):
+        sheet1 = bsheet[int((i / 4) * len(bsheet)):int(len(bsheet) * ((i + 1) / 4))]
+        output = t2a(
+            body=[arr for arr in sheet1],
+            style=PresetStyle.thin_compact
+        )
+        await ctx.send(f"```\n{output}\n```") 
+    
+@bot.command(name='earnings', help='Returns a graph of a companies revenue and earnings over the past 4 years')  
+async def earnings(ctx, symbol: str):
+    if not data.ticker_exists(symbol):
+        await ctx.send(f"Ticker symbol {symbol} does not exist or may be delisted.")
+        return
+    url = data.get_earnings(symbol, False)
+    embed = discord.Embed(title=f"{symbol} Earnings") 
+    embed.set_image(url=url)
+    await ctx.send(embed=embed)
+    
+@bot.command(name='quarterly_earnings', help='Returns a graph of a companies revenue and earnings over the past 4 quarters')  
+async def quarterly_earnings(ctx, symbol: str):
+    if not data.ticker_exists(symbol):
+        await ctx.send(f"Ticker symbol {symbol} does not exist or may be delisted.")
+        return
+    url = data.get_earnings(symbol, True)
+    embed = discord.Embed(title=f"{symbol} Earnings") 
+    embed.set_image(url=url)
+    await ctx.send(embed=embed)
 
 bot.run(TOKEN)
 
-
 # command for % change in stock price over a specified time period
 # command to get a graph of a stock
-# command to get prices of stocks
-# command for balance sheet
-# command for earnings
-# maybe an earnings graph for each quarter? 
-# command for info
+# command for analyst recommandations and predictions
+
 
