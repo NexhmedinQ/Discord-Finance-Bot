@@ -1,11 +1,14 @@
+from asyncio import sleep, run
 import os
 import random
 from dotenv import load_dotenv
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import data
 from table2ascii import table2ascii as t2a, PresetStyle
+import asyncpg 
+from datetime import datetime, timedelta
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -14,6 +17,10 @@ intents = discord.Intents.all()
 intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+
+async def create_db_pool():
+    bot.db = await asyncpg.create_pool(dsn="postgres://postgres:bingchilling@localhost:5432/finance_bot")
+    print("connected to db")
 
 @bot.event
 async def on_ready():
@@ -94,10 +101,61 @@ async def quarterly_earnings(ctx, symbol: str):
     embed.set_image(url=url)
     await ctx.send(embed=embed)
 
-bot.run(TOKEN)
+@bot.command(name='add_news', help='Adds a ticker to get daily news for')  
+async def add_news(ctx, symbol: str):
+    if not data.ticker_exists(symbol):
+        await ctx.send(f"Ticker symbol {symbol} does not exist or may be delisted.")
+        return
+    check_ticker = await bot.db.fetch('SELECT ticker FROM news_tickers WHERE ticker = $1', symbol)
+    if len(check_ticker) > 0:
+        await ctx.send(f"Ticker symbol {symbol} has already been added")
+    else:
+        await bot.db.execute('INSERT INTO news_tickers(ticker) VALUES ($1)', symbol)
+        
+@tasks.loop(hours=24)  
+async def daily_news(ctx):
+    tickers = await bot.db.fetch('SELECT ticker FROM news_tickers')
+    ticker_array = [ticker[0] for ticker in tickers]
+    news = data.get_news(ticker_array)
+    set_of = set(ticker_array)
+    for article in news.values():
+        related_tickers = [company for company in article['relatedTickers'] if company in set_of]
+        ticker_string = ", ".join(related_tickers)
+        publisher = article['publisher']
+        thumbnail = None
+        
+        try:
+            thumbnail = article['thumbnail']['resolution'][0]['url']
+        except KeyError:
+            pass
+        
+        embed=discord.Embed(title=article['title'], url=article['link'], color=0x00ffff)
+        
+        if thumbnail: 
+            embed.set_thumbnail(url=thumbnail)
+        
+        embed.add_field(name="Publisher", value=publisher, inline=False)
+        embed.add_field(name="Related Tickers", value=ticker_string, inline=True)
+        await ctx.send(embed=embed)
+    
+    
 
-# command for % change in stock price over a specified time period
-# command to get a graph of a stock
-# command for analyst recommandations and predictions
+@daily_news.before_loop
+async def before_daily_news():
+    now = datetime.now()
+    current_hour = now.strftime("%H") 
+    if int(current_hour) > 8:
+        nine_am = (now + timedelta(days=1)).replace(hour=9, minute=0, microsecond=0, second=0)
+    else:
+        nine_am = datetime(year=int(now.strftime("%Y")), month=int(now.strftime("%m")), day=int(now.strftime("%d")), hour=9)
+    diff = (nine_am - now).seconds
+    await sleep(diff)
+
+async def main():
+    await create_db_pool() 
+    await bot.start(TOKEN)
+
+run(main())
+
 
 

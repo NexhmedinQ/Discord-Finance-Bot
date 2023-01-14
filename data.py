@@ -1,6 +1,7 @@
 import yfinance as yf
 import pandas as pd
 from quickchart import QuickChart
+from datetime import datetime, timedelta
 
 def ticker_exists(symbol):
     data = yf.Ticker(symbol).history(period='1d', interval='1m')
@@ -53,10 +54,15 @@ def get_info(symbol, info_required):
     ticker = yf.Ticker(symbol)
     return ticker.info[info_required]
 
-# how should we get the % change (maybe % change over a time interval like 5y, 1y, 6 months and 1 month)
-def get_percentage_change(symbol):
-    pass
-
-def get_analyst_data(symbol):
-    pass
-
+def get_news(symbols):
+    datetime_yesterday = datetime.now() - timedelta(days=1)
+    return_dict = {}
+    for symbol in symbols:
+        ticker = yf.Ticker(symbol)
+        news = ticker.news
+        for one in news:
+            if datetime.fromtimestamp(one['providerPublishTime']) < datetime_yesterday:
+                break
+            if one['uuid'] not in return_dict:
+                return_dict[one['uuid']] = one
+    return return_dict
