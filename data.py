@@ -16,8 +16,10 @@ def current_price(symbol):
     return data_list[-1][3]
 
 def get_balance_sheet(symbol):
+    print("calling5")
     ticker = yf.Ticker(symbol)
     bsheet = ticker.balance_sheet
+    print(bsheet)
     headers = bsheet.index
     data_list = bsheet.to_numpy().tolist()
     ret = []

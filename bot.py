@@ -67,19 +67,26 @@ async def info_error(ctx, error):
         
 @bot.command(name='balance_sheet', help='Returns the most recent balance sheet of a single company specified by the ticker symbol entered')
 async def balance_sheet(ctx, symbol: str):
+    print("calling")
     if not data.ticker_exists(symbol):
         await ctx.send(f"Ticker symbol {symbol} does not exist or may be delisted.")
         return
-    
+    print("calling2")
     bsheet = data.get_balance_sheet(symbol)
-    
+    print("calling3")
     for i in range(0, 4):
+        print("calling4")
         sheet1 = bsheet[int((i / 4) * len(bsheet)):int(len(bsheet) * ((i + 1) / 4))]
         output = t2a(
             body=[arr for arr in sheet1],
             style=PresetStyle.thin_compact
         )
         await ctx.send(f"```\n{output}\n```") 
+
+@balance_sheet.error
+async def bsheet_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Incorrect arguments entered. Please enter: !balance_sheet \{ticker symbol\}")
     
 @bot.command(name='earnings', help='Returns a graph of a companies revenue and earnings over the past 4 years')  
 async def earnings(ctx, symbol: str):
@@ -90,6 +97,11 @@ async def earnings(ctx, symbol: str):
     embed = discord.Embed(title=f"{symbol} Earnings") 
     embed.set_image(url=url)
     await ctx.send(embed=embed)
+
+@earnings.error
+async def earnings_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Incorrect arguments entered. Please enter: !earnings \{ticker symbol\}")
     
 @bot.command(name='quarterly_earnings', help='Returns a graph of a companies revenue and earnings over the past 4 quarters')  
 async def quarterly_earnings(ctx, symbol: str):
@@ -100,6 +112,11 @@ async def quarterly_earnings(ctx, symbol: str):
     embed = discord.Embed(title=f"{symbol} Earnings") 
     embed.set_image(url=url)
     await ctx.send(embed=embed)
+
+@quarterly_earnings.error
+async def qearnings_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Incorrect arguments entered. Please enter: !quarterly_earnings \{ticker symbol\}")
 
 @bot.command(name='add_news', help='Adds a ticker to get daily news for')  
 async def add_news(ctx, symbol: str):
@@ -137,8 +154,6 @@ async def daily_news(ctx):
         embed.add_field(name="Publisher", value=publisher, inline=False)
         embed.add_field(name="Related Tickers", value=ticker_string, inline=True)
         await ctx.send(embed=embed)
-    
-    
 
 @daily_news.before_loop
 async def before_daily_news():
@@ -150,6 +165,15 @@ async def before_daily_news():
         nine_am = datetime(year=int(now.strftime("%Y")), month=int(now.strftime("%m")), day=int(now.strftime("%d")), hour=9)
     diff = (nine_am - now).seconds
     await sleep(diff)
+
+@bot.command(name="remove_news", help="Remove a ticker from the news watchlist")
+async def remove_news(ctx, symbol: str):
+    tickers = await bot.db.fetch('SELECT ticker FROM news_tickers')
+    ticker_array = [ticker[0] for ticker in tickers]
+    if symbol not in ticker_array:
+        await ctx.send(f"Ticker {symbol} is not in the watchlist.")
+    else:
+        await bot.db.execute('''DELETE FROM news_tickers where ticker = $1''', symbol)
 
 async def main():
     await create_db_pool() 
