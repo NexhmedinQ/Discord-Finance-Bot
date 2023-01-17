@@ -1,0 +1,8 @@
+discord.py
+pandas
+yfinance
+asyncio
+asyncpg
+quickchart-io
+table2ascii
+python-dotenv
