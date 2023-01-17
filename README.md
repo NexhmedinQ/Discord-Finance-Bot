@@ -1,5 +1,5 @@
 ## Installation
-1. Python 3.6 or above is required.
+1. Python 3.7 or above is required.
 2. Run `git clone git@github.com:NexhmedinQ/Discord-Finance-Bot.git`
 3. Run `pip install -r requirements.txt`
 4. In a `.env` file place the discord token.
