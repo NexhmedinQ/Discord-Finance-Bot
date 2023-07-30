@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 
 async def create_db_pool():
-    bot.db = await asyncpg.create_pool(dsn="postgres://postgres:bingchilling@localhost:5432/finance_bot")
+    bot.db = await asyncpg.create_pool(dsn="postgres://postgres:database@localhost:5432/finance_bot")
     print("connected to db")
 
 @bot.event
